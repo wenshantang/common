@@ -1,0 +1,80 @@
+package cn.aresoft.fhcf.common.service.impl;
+import java.util.ArrayList;
+import java.util.List;
+import com.puff.framework.annotation.Bean;
+import com.puff.framework.utils.StringUtil;
+import com.puff.jdbc.core.PageRecord;
+import com.puff.jdbc.core.SqlBuilder;
+import cn.aresoft.common.model.CommonParam;
+import cn.aresoft.common.service.impl.CenterServiceImpl;
+import cn.aresoft.fhcf.common.model.product.FundNav;
+import cn.aresoft.fhcf.common.service.FundNavService;
+@Bean(id = "fundNavService")
+public class FundNavServiceImpl extends CenterServiceImpl<FundNav>implements FundNavService {
+	@Override
+	public PageRecord<FundNav>  paging(FundNav f, CommonParam param) {
+		StringBuffer sql = new StringBuffer(SqlBuilder.buildQuerySQL(FundNav.class));
+		List<Object> condition = new ArrayList<Object>();
+		sql.append(" where 1=1 ");
+		if(StringUtil.notBlank(f.getFundInfoId())){
+			sql.append(" and  FundInfoId =? ");
+			condition.add(f.getFundInfoId());
+		}
+		if(StringUtil.notBlank(f.getStartDate())){
+			sql.append(" and  TradeDate >= ? ");
+			condition.add(f.getStartDate());
+		}
+		if(StringUtil.notBlank(f.getEndDate())){
+			sql.append(" and  TradeDate <= ? ");
+			condition.add(f.getEndDate());
+		}
+		sql.append("  order by TradeDate  desc");
+		return paging(sql.toString(), condition,param);
+	}
+
+	@Override
+	public List<FundNav> fundchart(String procode, String starttime,String endtime) {
+		String sql ="select * from tb_fund_nav where  FundInfoId = ? ";
+		List<Object> condition = new ArrayList<Object>();
+		StringBuilder sb = new StringBuilder(sql);
+		condition.add(procode);
+		if (StringUtil.notEmpty(starttime)) {
+			sb.append(" and date_format(TradeDate,'%Y-%c-%d') >= ?");
+			condition.add(starttime);
+		}
+		if (StringUtil.notEmpty(endtime)) {
+			sb.append(" and date_format(TradeDate,'%Y-%c-%d') <= ? ");
+			condition.add(endtime);
+		}
+		sb.append(" order by TradeDate  ");
+		return queryList(sb.toString(), condition);
+	}
+
+	@Override
+	public List<FundNav> fundchart(String procode, String date_condition) {
+		String sql ="select * from tb_fund_nav where  FundInfoId = ? ";
+		StringBuilder sb = new StringBuilder(sql);
+		List<Object> condition = new ArrayList<Object>();
+		condition.add(procode);
+		// 时间条件 w:周 ； m：1月；3m:3月， y：半年； now：今年以来； old：成立以来
+		if ("w".equals(date_condition) || "ww".equals(date_condition)) {
+			sb.append(" and week(TradeDate) =  week(curdate()) ");
+		} else if ("m".equals(date_condition)) {
+			sb.append(" and date(TradeDate) >=  date_sub(curdate(), interval 1 month) ");
+			sb.append(" and date(TradeDate) <= curdate() ");
+		} else if ("3m".equals(date_condition)) {
+			sb.append(" and date(TradeDate) >=  date_sub(curdate(), interval 3 month) ");
+			sb.append(" and date(TradeDate) <= curdate() ");
+		} else if ("y".equals(date_condition)) {
+			sb.append(" and date(TradeDate) >=  date_sub(curdate(), interval 1 year) ");
+			sb.append(" and date(TradeDate) <= curdate() ");
+		} else if ("now".equals(date_condition)) {
+			sb.append(" and  year(TradeDate) =  year(curdate())");
+		} else {
+			sb.append(" and date(TradeDate) <= curdate() ");
+		}
+		sb.append(" order by TradeDate  ");
+        return queryList(sb.toString(), condition);
+	}
+}
+
